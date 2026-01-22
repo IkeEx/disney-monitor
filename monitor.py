@@ -1,4 +1,4 @@
-import os, requests, time # timeを追加
+import os, requests, time
 from playwright.sync_api import sync_playwright
 
 def check_disney():
@@ -10,25 +10,34 @@ def check_disney():
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
+        # ブロック回避用のiPhone擬装
         context = browser.new_context(user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")
-        
-        # 1回の起動で3回チェックする（例：20秒おきに3回＝1分間カバー）
-        for _ in range(3):
+
+        # 1回の起動で3回（30秒おきに）ループ実行する
+        for i in range(3):
+            print(f"--- ループ {i+1} 回目開始 ---")
             for name, url in targets.items():
                 if not url: continue
                 page = context.new_page()
                 try:
-                    page.goto(url, wait_until="networkidle", timeout=60000)
+                    # タイムアウトを短めにして回転を速める
+                    page.goto(url, wait_until="networkidle", timeout=30000)
+                    page.wait_for_timeout(3000) # 読み込み待ちを5秒から3秒へ短縮
                     content = page.content()
-                    if "ファンタジーシャトー" in content and "ご希望の条件に合うプランがありません" not in content:
-                        requests.post(webhook, json={"content": f"🚨【最速通知】{name} 空室！\n{url}"})
+
+                    # 空室判定（プランが表示されているか）
+                    if "ご希望の条件に合うプランがありません" not in content and ("ファンタジーシャトー" in content or "ホテルミラコスタ" in content):
+                        requests.post(webhook, json={"content": f"🚨【超速報】{name} 空室発見！\n{url}"})
+                        print(f"Found: {name}")
                 except Exception as e:
-                    print(f"Error: {e}")
+                    # 1分おきだとエラーが出やすいので、エラー通知は1回目のみにするなど調整可
+                    print(f"Error at {name}: {e}")
                 page.close()
             
-            print("Waiting for next loop...")
-            time.sleep(20) # 20秒待機して次のチェックへ
-            
+            if i < 2: # 最後のループ以外は待機
+                print("30秒待機して再チェックします...")
+                time.sleep(30)
+        
         browser.close()
 
 if __name__ == "__main__":
