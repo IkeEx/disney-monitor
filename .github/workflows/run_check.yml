@@ -1,24 +1,32 @@
 name: Miracosta Monitor
+
 on:
   schedule:
-    - cron: '*/5 * * * *' # 5分おきに実行（世界標準時のため、多少のズレはあります）
-  workflow_dispatch: # 手動実行ボタンを追加
+    - cron: '*/5 * * * *' # 5分おきに自動実行
+  workflow_dispatch:      # 手動実行ボタンを表示
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install playwright requests
-          playwright install chromium
+          # Playwrightに必要なブラウザ本体をインストール
+          playwright install chromium --with-deps
+
       - name: Run Monitor
         env:
+          # GitHubのSettings > Secretsで登録した名前と一致させる
           TARGET_URL: ${{ secrets.TARGET_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python monitor.py
