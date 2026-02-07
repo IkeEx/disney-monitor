@@ -2,9 +2,8 @@ name: Miracosta Monitor
 
 on:
   schedule:
-    # 日本時間 05:00 〜 翌01:59 まで実行（2:00〜4:59のメンテ時間を回避）
-    # GitHubの時間（UTC）に合わせ、日本時間から9時間を引いた設定です
-    - cron: '* 0-16,20-23 * * *'
+    # 日本時間 毎日正午に実行
+    - cron: '0 3 * * *'
   workflow_dispatch: # 手動実行ボタン
 
 jobs:
@@ -31,3 +30,9 @@ jobs:
           URL_FS: ${{ secrets.URL_FS }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python monitor.py
+
+      - name: Send notification to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" -X POST -d '{"content": "Miracosta Monitor ran successfully at noon!"}' $DISCORD_WEBHOOK_URL
