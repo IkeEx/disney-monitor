@@ -4,7 +4,7 @@ on:
   schedule:
     # 日本時間 毎日正午に実行
     - cron: '0 3 * * *'
-  workflow_dispatch: # 手動実行ボタン
+  workflow_dispatch: 
 
 jobs:
   check:
@@ -17,12 +17,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip' # pipの依存関係をキャッシュして高速化
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install playwright requests
-          playwright install chromium --with-deps
+          # chromiumのみをインストールし、依存OSライブラリも入れる
+          npx playwright install --with-deps chromium
 
       - name: Run Monitor
         env:
@@ -31,8 +33,16 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python monitor.py
 
-      - name: Send notification to Discord
+      - name: Success Notification
+        if: success()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          curl -H "Content-Type: application/json" -X POST -d '{"content": "Miracosta Monitor ran successfully at noon!"}' $DISCORD_WEBHOOK_URL
+          curl -H "Content-Type: application/json" -X POST -d '{"content": "🚀 ミラコスタ監視：正常に実行されました（正午定期実行）"}' $DISCORD_WEBHOOK_URL
+
+      - name: Failure Notification
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" -X POST -d '{"content": "⚠️ ミラコスタ監視：エラーが発生しました。ログを確認してください。"}' $DISCORD_WEBHOOK_URL
