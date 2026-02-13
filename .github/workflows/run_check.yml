@@ -2,9 +2,9 @@ name: Miracosta Monitor
 
 on:
   schedule:
-    # 日本時間 毎日正午に実行
+    # 日本時間 毎日正午に実行 (UTC 03:00)
     - cron: '0 3 * * *'
-  workflow_dispatch: 
+  workflow_dispatch: # 手動実行ボタン
 
 jobs:
   check:
@@ -17,13 +17,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip' # pipの依存関係をキャッシュして高速化
+          # エラーの原因となった cache: 'pip' を削除しました
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install playwright requests
-          # chromiumのみをインストールし、依存OSライブラリも入れる
+          # ブラウザ本体と、Linux実行に必要な依存ライブラリをインストール
           npx playwright install --with-deps chromium
 
       - name: Run Monitor
@@ -38,11 +38,11 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          curl -H "Content-Type: application/json" -X POST -d '{"content": "🚀 ミラコスタ監視：正常に実行されました（正午定期実行）"}' $DISCORD_WEBHOOK_URL
+          curl -H "Content-Type: application/json" -X POST -d '{"content": "✅ ミラコスタ監視：正常に実行を完了しました。"}' $DISCORD_WEBHOOK_URL
 
       - name: Failure Notification
         if: failure()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          curl -H "Content-Type: application/json" -X POST -d '{"content": "⚠️ ミラコスタ監視：エラーが発生しました。ログを確認してください。"}' $DISCORD_WEBHOOK_URL
+          curl -H "Content-Type: application/json" -X POST -d '{"content": "⚠️ ミラコスタ監視：実行中にエラーが発生しました。GitHub Actionsのログを確認してください。"}' $DISCORD_WEBHOOK_URL
